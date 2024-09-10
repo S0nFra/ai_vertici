@@ -3,7 +3,7 @@ from math import factorial
 
 from misc import load_obj, save_obj
 
-T = """     
+GRAPH = """     
             a
            / \\
           / x \\
@@ -16,7 +16,7 @@ T = """
    g --- h --- i --- l
    """
 
-vertices = {
+VERTICES = {
     'a':0,
     'b':0,
     'c':0,
@@ -29,7 +29,7 @@ vertices = {
     'l':0
 }
 
-triangles = {
+TRIANGLES = {
     1 : ("a","b","c"),
     2 : ("b","d","e"),
     3 : ("c","e","f"),
@@ -38,16 +38,37 @@ triangles = {
     6 : ("f","i","l")
 }
 
-numbers = [0,1,2,3,4,5,6,7,8,9]
+NUMBERS = [0,1,2,3,4,5,6,7,8,9]
 
-def print_board(solution) -> str:
-    board = T
-    for i, v in enumerate(vertices):
-        board = board.replace(v, str(solution[i]))
-    print(board)
-    return board
+def render_solution(solution:dict, graph:str) -> str:
+    """
+    Replace vertices in the graph string with their values from the solution dictionary and print it.
 
-def check_solution(triangles:dict, vertices:dict, verbose=False) -> bool:
+    Args:
+        solution (dict): A dictionary mapping vertex labels to their values.
+        graph (str): A string representation of the graph with placeholder vertex labels.
+
+    Returns:
+        str: The graph string with vertex labels replaced by their values.
+    """
+    for v in solution:
+        graph = graph.replace(v, str(solution[v]))
+
+    return graph
+
+def check_solution(triangles:dict, vertices:dict, verbose:bool=False) -> bool:
+    """
+    Check if the current vertex assignment satisfies the condition that the sum of vertex values
+    for each triangle is the same.
+
+    Args:
+        triangles (dict): A dictionary where each key is a triangle index and each value is a tuple of vertex labels.
+        vertices (dict): A dictionary mapping vertex labels to their values.
+        verbose (bool): If True, print detailed information about the check process.
+
+    Returns:
+        bool: True if all triangles have the same sum, False otherwise.
+    """
     last_sum = None
     for v1, v2, v3 in triangles.values():
         curr_sum = vertices[v1] + vertices[v2] + vertices[v3]
@@ -59,64 +80,145 @@ def check_solution(triangles:dict, vertices:dict, verbose=False) -> bool:
             return False
     return True
 
-def solve(tries=None, save_each=None) -> dict:
+def solve(vertices:dict, tries=None, bkp_each:int=None, verbose:bool=False) -> dict:
+    """
+    Attempt to find a valid solution for the vertex values by trying permutations of numbers.
+
+    Args:
+        vertices (dict): A dictionary mapping vertex labels to their current values. This dictionary will be updated
+                         with the values of the current permutation being tested.
+        tries (set, optional): A set of attempted permutations to avoid redundant work. If None, it starts with an empty set.
+        bkp_each (int, optional): The number of tries between each backup of attempts to a file. If None, no backups are made.
+        verbose (bool, optional): If True, print detailed information about the solving process, including progress and
+                                   intermediate results.
+
+    Returns:
+        dict: A dictionary mapping vertex labels to their values if a solution is found. Returns None if no solution is found.
+    """
     if tries is None:
         tries = set()
     
-    max_tries = factorial(len(numbers))
+    max_tries = factorial(len(NUMBERS))
     last_save = 0
 
     while len(tries) < max_tries:
-        shuffle(numbers)
-        current_attempt = tuple(numbers)
+        shuffle(NUMBERS)
+        current_attempt = tuple(NUMBERS)
         
         if current_attempt in tries:
             continue
                 
         for i, v in enumerate(vertices):
-            vertices[v] = numbers[i]
+            vertices[v] = NUMBERS[i]
         
-        seen_sapce = 100*len(tries)/max_tries
-        print(f"Trie #{len(tries)} - {seen_sapce:.3f}% of the space")
-        print(f"\t{vertices}")
-        print(f"Seen {seen_sapce:.3f}% of the space")
+        if verbose:
+            seen_space = 100 * len(tries) / max_tries
+            print(f"Try #{len(tries)} - {seen_space:.3f}% of the space")
+            print(f"\t{vertices}")
         
-        if save_each and len(tries) - last_save >= save_each:
-            save_obj("tries.pk", tries)
+        if bkp_each and len(tries) - last_save >= bkp_each:
+            save_obj(f"./bckps/tries{len(tries)}.pk", tries)
             last_save = len(tries)
         
-        if check_solution(triangles, vertices):
+        if check_solution(TRIANGLES, vertices):
             return vertices
         
         tries.add(current_attempt)
     
     return None
-            
-# if __name__ == "__main__":
-#     import time
-#     solustions = list()
-#     tries = set()
-#     try:
-#         tries = load_obj("true_tries.pk")
-#     except FileNotFoundError as e:
-#         print("No previous attempts were found")
+
+def find_solutions(vertices, tries=None, bkp_each:int=None, verbose:bool=False):
+    """
+    Find all possible solutions by repeatedly calling the solve function until no more solutions are found.
+    The results are saved to a file named "sols.txt", and the current set of attempted permutations is saved to
+    a file named "tries.pk".
+
+    Args:
+        vertices (dict): A dictionary mapping vertex labels to their current values. This dictionary is passed to the
+                         solve function and updated with the values of the current permutation being tested.
+        tries (set, optional): A set of attempted permutations to avoid redundant work. If None, it starts with an empty set.
+        bkp_each (int, optional): The number of tries between each backup of attempts to a file. If None, no backups are made.
+        verbose (bool, optional): If True, print detailed information about the solving process, including progress and
+                                   intermediate results.
+
+    Returns:
+        None
+
+    Notes:
+        - The "sols.txt" file will contain all found solutions with their details and execution times.
+        - The "tries.pk" file will contain the current set of attempted permutations to resume from where it left off
+          in future runs.
+        - The function removes found solutions from the `tries` set to prevent reprocessing them in future runs.
+    """
+    import time
+    solutions = list()
     
-#     while True:
-#         start = time.time()
-#         solution = solve(tries, 10000)
-#         end = time.time()
+    if tries is None:
+        tries = set()
+    
+    gstart = time.time()
+    while True:
+        lstart = time.time()
+        solution = solve(vertices, tries, bkp_each, verbose)
+        lend = time.time()
         
-#         if solution:
-#             solution_nums = tuple(solution.values())
-#             solustions.append(solution_nums)
-#             tries.add(solution_nums)
-#             with open("sols.txt","a") as f:
-#                 f.write(f"Sol. {len(solustions)} : {str(solution)}\n")
-#                 f.write(print_board(solution_nums)+"\n")
-#                 f.write(f"Exec. time: {end-start} s")
-#                 f.write("\n\n")
-#         else:
-#             break
+        if solution:
+            solution_nums = tuple(solution.values())
+            solutions.append(solution_nums)
+            # Add the solution to make solve() ignore it
+            tries.add(solution_nums)
+            with open("sols.txt", "a") as f:
+                msg_header = f"Solution {len(solutions)} at try #{len(tries)} : {str(solution)}"
+                f.write(msg_header + "\n")
+                print(msg_header)
+                f.write(render_solution(solution, GRAPH) + "\n")
+                f.write(f"Found in: {lend - lstart} s")
+                f.write("\n\n")
+        else:
+            break
+    print("Total execution time:", gstart - time.time(), "s")
     
-#     tries -= set(solustions)
-#     save_obj("true_tries.pk", tries)
+    # Remove the found solutions from `tries` to prevent reprocessing
+    tries -= set(solutions)
+    save_obj("tries.pk", tries)
+    
+if __name__ == "__main__":
+    import argparse
+    # Configure the argument parser
+    parser = argparse.ArgumentParser(
+        description="Solver for the 'Ai Vertici' puzzle."
+    )
+    parser.add_argument("--all-solutions", "-a",
+                        action="store_true",
+                        default=False,
+                        help="Find and list all possible solutions to the puzzle. Without this flag, only one solution is found.")
+    parser.add_argument("--tries-filepath", "-t",
+                        default="tries.pk",
+                        type=str,
+                        help="Path to the file where previously attempted permutations are stored. Default is 'tries.pk'.")
+    parser.add_argument("--bck-each", "-b",
+                        default=None,
+                        type=int,
+                        help="Number of tries after which to backup the current set of attempts to a file. If not specified, no backups are made.")
+    parser.add_argument("--verbose", "-v",
+                        action="store_true",
+                        default=False,
+                        help="Print detailed information about the solving process, including progress and intermediate results.")
+
+    # Parse the arguments from the command line
+    args = parser.parse_args()
+    
+    try:
+        tries = load_obj(args.tries_filepath)
+    except FileNotFoundError:
+        print("No previous attempts were found.")
+        tries = None
+    
+    if args.all_solutions:
+        find_solutions(VERTICES, tries, args.bck_each, args.verbose)
+    else:
+        sol = solve(VERTICES, tries, args.bck_each, args.verbose)
+        if sol:
+            print(render_solution(sol, GRAPH))
+        else:
+            print("No solution found.")
