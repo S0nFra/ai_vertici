@@ -1,7 +1,7 @@
 from random import shuffle
 from math import factorial
 
-from misc import load_obj, save_obj
+from misc import load_obj, save_obj, format_time
 
 GRAPH = """     
             a
@@ -176,7 +176,8 @@ def find_solutions(vertices, tries=None, bkp_each:int=None, verbose:bool=False):
                 f.write("\n\n")
         else:
             break
-    print("Total execution time:", gstart - time.time(), "s")
+    
+    print("Total execution time:", format_time(time.time() - gstart), "s")
     
     # Remove the found solutions from `tries` to prevent reprocessing
     tries -= set(solutions)
