@@ -117,7 +117,7 @@ def solve(vertices:dict, tries=None, bkp_each:int=None, verbose:bool=False) -> d
             print(f"\t{vertices}")
         
         if bkp_each and len(tries) - last_save >= bkp_each:
-            save_obj(f"./bckps/tries{len(tries)}.pk", tries)
+            save_obj(f"bckp.pk", tries)
             last_save = len(tries)
         
         if check_solution(TRIANGLES, vertices):
