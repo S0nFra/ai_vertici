@@ -10,6 +10,11 @@ def save_obj(filename, obj, overwrite=True):
     obj (Any): The object to save.
     overwrite (bool): If False, the function will append a number to the filename if a file with the same name exists.
     """
+    # Ensure the directory exists
+    directory = os.path.dirname(filename)
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+    
     if not overwrite:
         file_number = 1
         
@@ -22,6 +27,7 @@ def save_obj(filename, obj, overwrite=True):
             filename = f"{file_name}_{file_number}{file_extension}"
             file_number += 1
     
+    # Save the object to the file
     with open(filename, "wb") as file:
         pickle.dump(obj, file)
     
