@@ -12,7 +12,7 @@ def save_obj(filename, obj, overwrite=True):
     """
     # Ensure the directory exists
     directory = os.path.dirname(filename)
-    if not os.path.exists(directory):
+    if os.path.isdir(directory) and not os.path.exists(directory):
         os.makedirs(directory)
     
     if not overwrite:
@@ -44,3 +44,9 @@ def load_obj(filename):
     with open(filename, "rb") as file:
         obj = pickle.load(file)
     return obj
+
+def format_time(seconds) -> str:
+    hours = int(seconds // 3600)
+    minutes = int((seconds % 3600) // 60)
+    seconds = seconds % 60    
+    return f"{hours} h {minutes} m {seconds:.3f} s"
